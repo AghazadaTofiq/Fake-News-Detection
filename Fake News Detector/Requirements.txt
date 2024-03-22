@@ -1,0 +1,8 @@
+1. Install python
+2. pip install pandas
+   pip install numpy
+   pip install re
+   pip install string
+   pip install scikit-learn
+   pip install matplotlib
+   pip install seaborn
