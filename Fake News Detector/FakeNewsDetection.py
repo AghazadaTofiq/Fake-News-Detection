@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import streamlit as st
 import re
 import string
 from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
@@ -58,94 +59,73 @@ cv = StratifiedKFold(n_splits=2, shuffle=True, random_state=42)
 svm_grid_search = GridSearchCV(svm_model, svm_params, cv=cv)
 svm_grid_search.fit(X_train, y_train)
 
-# Step 9: Model evaluation (SVM)
-y_pred_svm = svm_grid_search.predict(X_test)
-y_pred_proba_svm = svm_grid_search.predict_proba(X_test)[:, 1]  # Predict probabilities for ROC-AUC
-accuracy_svm = accuracy_score(y_test, y_pred_svm)
-precision_svm = precision_score(y_test, y_pred_svm)
-recall_svm = recall_score(y_test, y_pred_svm)
-f1_svm = f1_score(y_test, y_pred_svm)
-roc_auc_svm = roc_auc_score(y_test, y_pred_proba_svm)
-
-print("SVM Model Evaluation:")
-print("Accuracy:", accuracy_svm)
-print("Precision:", precision_svm)
-print("Recall:", recall_svm)
-print("F1 Score:", f1_svm)
-print("ROC AUC Score:", roc_auc_svm)
-
-# Step 10: Model training and evaluation (Random Forest Classifier)
+# Step 9: Model training and evaluation (Random Forest Classifier)
 rf_params = {'n_estimators': [100, 200, 300]}
 rf_model = RandomForestClassifier(random_state=42)
 rf_grid_search = GridSearchCV(rf_model, rf_params, cv=cv)
 rf_grid_search.fit(X_train, y_train)
 
-# Step 11: Model evaluation (Random Forest Classifier)
-y_pred_rf = rf_grid_search.predict(X_test)
-y_pred_proba_rf = rf_grid_search.predict_proba(X_test)[:, 1]  # Predict probabilities for ROC-AUC
-accuracy_rf = accuracy_score(y_test, y_pred_rf)
-precision_rf = precision_score(y_test, y_pred_rf)
-recall_rf = recall_score(y_test, y_pred_rf)
-f1_rf = f1_score(y_test, y_pred_rf)
-roc_auc_rf = roc_auc_score(y_test, y_pred_proba_rf)
+# Step 10: Model evaluation (SVM and RFS)
+# Initialize an empty list to collect metrics for both models
+model_metrics = []
 
-print("\nRandom Forest Classifier Model Evaluation:")
-print("Accuracy:", accuracy_rf)
-print("Precision:", precision_rf)
-print("Recall:", recall_rf)
-print("F1 Score:", f1_rf)
-print("ROC AUC Score:", roc_auc_rf)
+# Function to evaluate a model and return metrics
+def evaluate_model(model, model_name, X_test, y_test):
+    # Make predictions
+    y_pred = model.predict(X_test)
+    y_pred_proba = model.predict_proba(X_test)[:, 1]  # Predict probabilities for ROC-AUC
+    
+    # Calculate metrics
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+    roc_auc = roc_auc_score(y_test, y_pred_proba)
+    
+    # Collect metrics in a list for plotting
+    model_metrics.append({
+        'Model': model_name,
+        'Accuracy': accuracy,
+        'Precision': precision,
+        'Recall': recall,
+        'F1 Score': f1,
+        'ROC AUC': roc_auc
+    })
+    
+    # Return metrics
+    return accuracy, precision, recall, f1, roc_auc
+    
+# Example usage for SVM and Random Forest
+evaluate_model(svm_grid_search, "SVM", X_test, y_test)
+evaluate_model(rf_grid_search, "Random Forest Classifier", X_test, y_test)
 
-# Step 12: Manual testing function (SVM)
-def predict_fake_news_svm(text):
+# Convert the list of dictionaries into a DataFrame for plotting
+metrics_df = pd.DataFrame(model_metrics).melt(id_vars='Model', var_name='Metric', value_name='Score')
+
+# Step 11: Manual testing function
+def predict_fake_news(text, model):
     text = preprocess_text(text)
     text_vectorized = vectorizer.transform([text])
     text_reduced = svd.transform(text_vectorized)
-    prediction = svm_grid_search.predict(text_reduced)
+    prediction = model.predict(text_reduced)
+
     if prediction[0] == 0:
         return "Fake News"
     else:
         return "Not Fake News"
 
-# Example of manual testing (SVM)
+# Example of manual testing for SVM and Random Forest
 news_article = "According to a new study, eating chocolate every day can improve your memory."
+
 print("\nPrediction for the news article (SVM):")
-print(predict_fake_news_svm(news_article))
+print(predict_fake_news(news_article, svm_grid_search))
 
-# Step 13: Manual testing function (Random Forest Classifier)
-def predict_fake_news_rf(text):
-    text = preprocess_text(text)
-    text_vectorized = vectorizer.transform([text])
-    text_reduced = svd.transform(text_vectorized)
-    prediction = rf_grid_search.predict(text_reduced)
-    if prediction[0] == 0:
-        return "Fake News"
-    else:
-        return "Not Fake News"
-
-# Example of manual testing (Random Forest Classifier)
 print("\nPrediction for the news article (Random Forest Classifier):")
-print(predict_fake_news_rf(news_article))
+print(predict_fake_news(news_article, rf_grid_search))
 
-# Evaluation metrics
-metrics = ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'ROC AUC']
-
-# SVM Model Metrics
-svm_metrics = [accuracy_svm, precision_svm, recall_svm, f1_svm, roc_auc_svm]
-
-# Random Forest Classifier Model Metrics
-rf_metrics = [accuracy_rf, precision_rf, recall_rf, f1_rf, roc_auc_rf]
-
-# Combine metrics for plotting
-data = pd.DataFrame({
-    'Metric': metrics * 2,
-    'Score': svm_metrics + rf_metrics,
-    'Model': ['SVM'] * 5 + ['Random Forest'] * 5
-})
-
-# Plotting
+# Step 12: Plotting
 plt.figure(figsize=(12, 6))
-sns.barplot(x='Metric', y='Score', hue='Model', data=data)
+sns.barplot(x='Metric', y='Score', hue='Model', data=metrics_df)
 plt.title('Model Evaluation Metrics')
 plt.ylim(0, 1)
 plt.ylabel('Score')
@@ -160,3 +140,28 @@ plt.title('Precision-Recall Curve (SVM)')
 plt.show()
 
 # Plot Precision
+
+# Step 13: STREAMLIT
+# Streamlit Title
+st.title("Model Evaluation Metrics Comparison")
+
+# Create the bar plot using Streamlit
+st.subheader('Model Metrics Comparison')
+st.write("This plot shows the comparison of Accuracy, Precision, Recall, F1 Score, and ROC AUC between SVM and Random Forest models.")
+
+fig, ax = plt.subplots(figsize=(12, 6))
+sns.barplot(x='Metric', y='Score', hue='Model', data=metrics_df, ax=ax)
+ax.set_title('Model Evaluation Metrics')
+ax.set_ylim(0, 1)
+ax.set_ylabel('Score')
+ax.set_xlabel('Metric')
+st.pyplot(fig)  # Render the plot in Streamlit
+
+# Precision-Recall curve for SVM
+st.subheader('Precision-Recall Curve (SVM)')
+st.write("Below is the Precision-Recall curve for the SVM model.")
+
+fig, ax = plt.subplots(figsize=(8, 6))
+PrecisionRecallDisplay.from_estimator(svm_grid_search, X_test, y_test, ax=ax)
+ax.set_title('Precision-Recall Curve (SVM)')
+st.pyplot(fig)
