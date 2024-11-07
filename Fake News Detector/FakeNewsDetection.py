@@ -12,14 +12,13 @@ from sklearn.decomposition import TruncatedSVD
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Step 1: Load and label the dataset
 data_fake = pd.read_csv("Fake.csv")
 data_true = pd.read_csv("True.csv")
 data_fake["class"] = 0
 data_true["class"] = 1
 data = pd.concat([data_fake, data_true], ignore_index=True)
 
-# Step 2: Data cleaning and preprocessing
+# Data cleaning and preprocessing
 def preprocess_text(text):
     text = text.lower()
     text = re.sub(r'\[.*?\]', '', text)
@@ -33,19 +32,19 @@ def preprocess_text(text):
 
 data['text'] = data['text'].apply(preprocess_text)
 
-# Step 3: Feature extraction using TF-IDF
+# TF-IDF
 vectorizer = TfidfVectorizer(max_features=5000, ngram_range=(1, 2))
 X = vectorizer.fit_transform(data['text'])
 y = data['class']
 
-# Step 4: Reduce dimensionality using TruncatedSVD
+# TruncatedSVD
 svd = TruncatedSVD(n_components=100)
 X = svd.fit_transform(X)
 
-# Step 5: Train-test split
+# Train-test split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Step 6: Model training with GridSearchCV
+# Model training
 def train_model(model, params, X_train, y_train):
     cv = StratifiedKFold(n_splits=2, shuffle=True, random_state=42)
     grid_search = GridSearchCV(model, params, cv=cv)
@@ -80,7 +79,7 @@ def evaluate_model(model, model_name):
 evaluate_model(svm_model, "SVM")
 evaluate_model(rf_model, "Random Forest Classifier")
 
-# Step 8: Plotting metrics
+# Plotting metrics
 metrics_df = pd.DataFrame(model_metrics).melt(id_vars='Model', var_name='Metric', value_name='Score')
 
 def plot_metrics(metrics_df):
@@ -95,7 +94,7 @@ def plot_metrics(metrics_df):
 
 plot_metrics(metrics_df)
 
-# Step 9: Manual testing function
+# Manual testing function
 def predict_fake_news(text, model):
     text = preprocess_text(text)
     text_vectorized = vectorizer.transform([text])
@@ -108,7 +107,7 @@ news_article = "According to a new study, eating chocolate every day can improve
 print("\nPrediction for the news article (SVM):", predict_fake_news(news_article, svm_model))
 print("\nPrediction for the news article (Random Forest Classifier):", predict_fake_news(news_article, rf_model))
 
-# Step 10: Streamlit dashboard
+# Streamlit dashboard
 st.title("Model Evaluation Metrics Comparison")
 st.subheader("Model Metrics Comparison")
 st.write("Comparison of Accuracy, Precision, Recall, F1 Score, and ROC AUC between SVM and Random Forest models.")
